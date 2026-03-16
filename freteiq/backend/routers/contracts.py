@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Header
 from typing import Optional, List
 
 from models.contract import Contract, ContractCreate, ContractUpdate
-from database import get_supabase
+from database import get_supabase, get_user_id_from_token
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
 
@@ -42,6 +42,11 @@ async def create_contract(
     for field in ["validade_inicio", "validade_fim"]:
         if field in data and data[field]:
             data[field] = str(data[field])
+
+    if token:
+        company_id = get_user_id_from_token(token)
+        if company_id:
+            data["company_id"] = company_id
 
     result = supabase.table("contracts").insert(data).execute()
     if not result.data:

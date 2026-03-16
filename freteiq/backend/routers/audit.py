@@ -7,7 +7,7 @@ from models.audit_result import AuditResponse, ContestacaoResponse, AnaliseRespo
 from services.cte_parser import parse_cte_xml, get_demo_cte
 from services.audit_engine import audit_cte
 from services.ai_module import generate_contestacao, generate_analise_estrategica
-from database import get_supabase
+from database import get_supabase, get_user_id_from_token
 
 router = APIRouter(prefix="/audit", tags=["audit"])
 
@@ -33,7 +33,7 @@ def _get_active_contract(supabase, cnpj_transportadora: str) -> Optional[dict]:
     return None
 
 
-def _save_audit_result(supabase, result, xml_raw: str = "") -> Optional[str]:
+def _save_audit_result(supabase, result, xml_raw: str = "", company_id: Optional[str] = None) -> Optional[str]:
     """Salva resultado de auditoria no banco."""
     try:
         data = {
@@ -49,6 +49,8 @@ def _save_audit_result(supabase, result, xml_raw: str = "") -> Optional[str]:
             "findings": [f.model_dump() for f in result.findings],
             "xml_raw": xml_raw[:50000] if xml_raw else "",  # limita tamanho
         }
+        if company_id:
+            data["company_id"] = company_id
         res = supabase.table("audit_results").insert(data).execute()
         if res.data:
             return res.data[0]["id"]
@@ -78,8 +80,10 @@ async def upload_cte(
     # Buscar contrato
     contract = None
     token = None
+    company_id = None
     if authorization and authorization.startswith("Bearer "):
         token = authorization.split(" ", 1)[1]
+        company_id = get_user_id_from_token(token)
 
     supabase = get_supabase(token)
 
@@ -87,7 +91,7 @@ async def upload_cte(
         contract = _get_active_contract(supabase, cte.cnpj)
 
     result = audit_cte(cte, contract)
-    audit_id = _save_audit_result(supabase, result, content.decode("utf-8", errors="replace"))
+    audit_id = _save_audit_result(supabase, result, content.decode("utf-8", errors="replace"), company_id)
 
     return AuditResponse(success=True, auditId=audit_id, result=result)
 
@@ -108,10 +112,12 @@ async def audit_demo(authorization: Optional[str] = Header(None)):
     result = audit_cte(cte, demo_contract)
 
     token = None
+    company_id = None
     if authorization and authorization.startswith("Bearer "):
         token = authorization.split(" ", 1)[1]
+        company_id = get_user_id_from_token(token)
     supabase = get_supabase(token)
-    audit_id = _save_audit_result(supabase, result)
+    audit_id = _save_audit_result(supabase, result, company_id=company_id)
 
     return AuditResponse(success=True, auditId=audit_id, result=result)
 

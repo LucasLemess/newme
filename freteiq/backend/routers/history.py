@@ -75,7 +75,7 @@ async def get_metrics(authorization: Optional[str] = Header(None)):
     supabase = get_supabase(token)
 
     result = supabase.table("audit_results").select(
-        "status,total_overcharge,valor_total"
+        "status,total_overcharge,valor_total,cte_emitente"
     ).execute()
     rows = result.data or []
 
