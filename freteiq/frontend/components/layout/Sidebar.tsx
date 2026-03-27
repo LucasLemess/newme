@@ -12,6 +12,7 @@ import {
   LogOut,
   Truck,
   Zap,
+  Network,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/history", label: "Histórico", icon: Clock },
   { href: "/contracts", label: "Contratos", icon: FileText },
   { href: "/contestacao", label: "Contestações", icon: MessageSquare },
+  { href: "/malha", label: "Malha", icon: Network },
 ];
 
 export function Sidebar() {

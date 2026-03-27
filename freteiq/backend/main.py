@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from config import settings
-from routers import audit, contracts, history
+from routers import audit, contracts, history, network
 
 app = FastAPI(
     title="FreteIQ API",
@@ -22,6 +22,7 @@ app.add_middleware(
 app.include_router(audit.router)
 app.include_router(contracts.router)
 app.include_router(history.router)
+app.include_router(network.router)
 
 
 @app.get("/health")

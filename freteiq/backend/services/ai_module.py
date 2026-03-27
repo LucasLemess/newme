@@ -66,6 +66,98 @@ A carta deve ser assertiva, técnica e juridicamente embasada. Cite cláusulas c
     return message.content[0].text
 
 
+def generate_malha_report(summary: dict, lanes: list, cenarios: list) -> str:
+    """
+    Gera relatório estratégico trimestral da malha de transportes usando Claude.
+    Identifica padrões, classifica lanes críticas e recomenda ações concretas.
+    """
+    total_embarques = summary.get("total_embarques", 0)
+    total_lanes = summary.get("total_lanes", 0)
+    custo_total = summary.get("custo_total", 0)
+    taxa_pont = summary.get("taxa_pontualidade_geral")
+    taxa_pont_fmt = f"{taxa_pont*100:.1f}%" if taxa_pont is not None else "N/D"
+    economia_pot = summary.get("economia_potencial", 0)
+    lanes_criticas = summary.get("lanes_criticas", 0)
+    lanes_atencao = summary.get("lanes_atencao", 0)
+
+    # Formatar top 5 piores lanes
+    piores = lanes[:5] if lanes else []
+    piores_txt = ""
+    for i, lane in enumerate(piores, 1):
+        piores_txt += (
+            f"\n{i}. {lane.get('origem')} → {lane.get('destino')} "
+            f"({lane.get('transportadora')}) | "
+            f"Score: {lane.get('lane_score')}/100 | "
+            f"Pontualidade: {round(lane.get('taxa_pontualidade',0)*100,1) if lane.get('taxa_pontualidade') else 'N/D'}% | "
+            f"Custo médio/embarque: R$ {lane.get('custo_medio_por_embarque',0):,.2f} | "
+            f"Lead time: {lane.get('lead_time_medio') or 'N/D'} dias"
+        )
+
+    # Formatar cenários salvos
+    cenarios_txt = ""
+    for c in cenarios[:3]:
+        eco = c.get("economia_estimada") or 0
+        cenarios_txt += f"\n- {c.get('nome')} ({c.get('tipo')}): economia estimada R$ {eco:,.2f}"
+
+    prompt = f"""Você é um consultor sênior de logística estratégica especializado em redesenho de malha de transportes para empresas brasileiras.
+
+DADOS DA MALHA (período analisado):
+- Total de embarques: {total_embarques}
+- Total de lanes (rotas): {total_lanes}
+- Custo total de frete: R$ {custo_total:,.2f}
+- Taxa de pontualidade geral: {taxa_pont_fmt}
+- Economia potencial identificada: R$ {economia_pot:,.2f}
+- Lanes críticas (score < 40): {lanes_criticas}
+- Lanes em atenção (score 40-65): {lanes_atencao}
+
+PIORES LANES (por score composto):
+{piores_txt or "Dados insuficientes."}
+
+CENÁRIOS DE OTIMIZAÇÃO SIMULADOS:
+{cenarios_txt or "Nenhum cenário simulado ainda."}
+
+Gere um relatório estratégico executivo estruturado da malha de transportes com:
+
+## SUMÁRIO EXECUTIVO
+- Estado atual da malha em 3-4 bullet points
+- Principal problema identificado
+- Principal oportunidade de melhoria
+
+## ANÁLISE DAS LANES CRÍTICAS
+- Para cada lane crítica identificada, explique por que ela é problemática
+- Identifique padrões (ex.: região geográfica, modal, transportadora)
+- Estime o custo anual projetado para manter o status quo
+
+## RECOMENDAÇÕES DE CURTO PRAZO (0–30 dias)
+- Ações imediatas e de baixo esforço
+- Transportadoras para negociar / substituir
+- Rotas para suspender ou consolidar imediatamente
+
+## RECOMENDAÇÕES DE MÉDIO PRAZO (31–90 dias)
+- Mudanças de modal ou frequência
+- Novas negociações contratuais
+- Implantação de milk-run ou cross-dock onde aplicável
+
+## RECOMENDAÇÕES ESTRUTURAIS (90+ dias)
+- Redesenho de rede (abrir/fechar CDs, novos pontos de consolidação)
+- Parcerias estratégicas com transportadoras
+- Indicadores de monitoramento a implementar (KPIs, SLAs)
+
+## PROJEÇÃO DE IMPACTO
+- Economia total estimada (R$ e %) se recomendações forem implementadas
+- Melhoria esperada em pontualidade (pontos percentuais)
+- Payback estimado das iniciativas
+
+Seja objetivo, use dados reais fornecidos, estime valores quando necessário, e foque em ações práticas que um gerente de logística pode implementar em seu time."""
+
+    message = client.messages.create(
+        model=MODEL,
+        max_tokens=3000,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return message.content[0].text
+
+
 def generate_analise_estrategica(audit: AuditResult) -> str:
     """
     Gera análise estratégica da transportadora e recomendações usando Claude.

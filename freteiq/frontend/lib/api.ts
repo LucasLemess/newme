@@ -4,6 +4,11 @@ import type {
   Contract,
   ContractCreate,
   DashboardMetrics,
+  LaneMetrics,
+  NetworkSummary,
+  ScenarioResult,
+  SavedScenario,
+  NetworkReport,
 } from "./types";
 
 const BACKEND_URL =
@@ -154,4 +159,91 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
 
 export function getExportCsvUrl(): string {
   return `${BACKEND_URL}/history/export/csv`;
+}
+
+// ── Network / Malha ───────────────────────────────────────────────────────────
+
+export async function getNetworkLanes(): Promise<LaneMetrics[]> {
+  const headers = await authHeaders();
+  const res = await fetch(`${BACKEND_URL}/network/lanes`, { headers });
+  const data = await handleResponse<{ lanes: LaneMetrics[] }>(res);
+  return data.lanes;
+}
+
+export async function getNetworkSummary(): Promise<NetworkSummary> {
+  const headers = await authHeaders();
+  const res = await fetch(`${BACKEND_URL}/network/summary`, { headers });
+  return handleResponse<NetworkSummary>(res);
+}
+
+export async function seedDemoShipments(): Promise<{ success: boolean; inserted: number }> {
+  const headers = await authHeaders();
+  const res = await fetch(`${BACKEND_URL}/network/shipments/demo`, {
+    method: "POST",
+    headers,
+  });
+  return handleResponse<{ success: boolean; inserted: number }>(res);
+}
+
+export async function importShipmentsCsv(
+  file: File
+): Promise<{ success: boolean; inserted: number; errors: string[] }> {
+  const headers = await authHeaders();
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${BACKEND_URL}/network/shipments/csv`, {
+    method: "POST",
+    headers,
+    body: form,
+  });
+  return handleResponse<{ success: boolean; inserted: number; errors: string[] }>(res);
+}
+
+export async function createScenario(payload: {
+  nome: string;
+  descricao?: string;
+  tipo: string;
+  parametros: Record<string, unknown>;
+}): Promise<ScenarioResult> {
+  const headers = await authHeaders();
+  const res = await fetch(`${BACKEND_URL}/network/scenarios`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<ScenarioResult>(res);
+}
+
+export async function listScenarios(): Promise<SavedScenario[]> {
+  const headers = await authHeaders();
+  const res = await fetch(`${BACKEND_URL}/network/scenarios`, { headers });
+  const data = await handleResponse<{ data: SavedScenario[] }>(res);
+  return data.data;
+}
+
+export async function deleteScenario(id: string): Promise<void> {
+  const headers = await authHeaders();
+  const res = await fetch(`${BACKEND_URL}/network/scenarios/${id}`, {
+    method: "DELETE",
+    headers,
+  });
+  if (!res.ok && res.status !== 204) {
+    throw new Error(`HTTP ${res.status}`);
+  }
+}
+
+export async function generateNetworkReport(): Promise<{ id: string; conteudo: string }> {
+  const headers = await authHeaders();
+  const res = await fetch(`${BACKEND_URL}/network/report`, {
+    method: "POST",
+    headers,
+  });
+  return handleResponse<{ id: string; conteudo: string }>(res);
+}
+
+export async function getLatestNetworkReport(): Promise<NetworkReport | null> {
+  const headers = await authHeaders();
+  const res = await fetch(`${BACKEND_URL}/network/report/latest`, { headers });
+  const data = await handleResponse<{ report: NetworkReport | null }>(res);
+  return data.report;
 }
